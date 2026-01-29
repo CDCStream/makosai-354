@@ -58,14 +58,14 @@ export default function PricingPage() {
     ultra: Rocket,
   };
 
-  const planColors = {
+  const planColors: Record<keyof typeof PLANS, string> = {
     free: 'from-gray-400 to-gray-600',
     starter: 'from-blue-400 to-blue-600',
     pro: 'from-purple-400 to-purple-600',
     ultra: 'from-amber-400 to-orange-500',
   };
 
-  const planFeatures = {
+  const planFeatures: Record<keyof typeof PLANS, string[]> = {
     free: [
       '5 credits per month',
       'All question types',
