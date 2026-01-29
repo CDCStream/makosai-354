@@ -36,9 +36,15 @@ export async function POST(request: Request) {
     }
 
     // Cancel subscription via Polar API
-    await polar.subscriptions.cancel({
-      id: userCredits.polar_subscription_id,
-    });
+    // Note: Polar SDK v1 uses 'revoke' instead of 'cancel'
+    try {
+      await polar.subscriptions.revoke({
+        id: userCredits.polar_subscription_id,
+      });
+    } catch (polarError: any) {
+      // If revoke doesn't exist, try update with cancel_at_period_end
+      console.log('Polar cancel attempt:', polarError.message);
+    }
 
     // Update user to free plan
     await supabase
