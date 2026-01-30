@@ -1,14 +1,22 @@
 import { createBrowserClient } from '@supabase/ssr';
-import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-// Browser client for client-side usage (handles cookies automatically)
-export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
+// Singleton browser client
+let supabaseInstance: ReturnType<typeof createBrowserClient> | null = null;
 
-// Server client for server-side usage (without cookie handling)
-export const supabaseServer = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = (() => {
+  if (typeof window === 'undefined') {
+    // Server-side: create new instance each time
+    return createBrowserClient(supabaseUrl, supabaseAnonKey);
+  }
+  // Client-side: use singleton
+  if (!supabaseInstance) {
+    supabaseInstance = createBrowserClient(supabaseUrl, supabaseAnonKey);
+  }
+  return supabaseInstance;
+})();
 
 // Singleton getter for supabase client
-export const getSupabase = () => supabaseServer;
+export const getSupabase = () => supabase;
