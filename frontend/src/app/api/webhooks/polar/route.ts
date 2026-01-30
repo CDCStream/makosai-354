@@ -110,13 +110,18 @@ export const POST = Webhooks({
             const currentCredits = userCredits?.credits || 0;
             const newCredits = currentCredits + creditsToAdd;
 
-            await supabaseAdmin
+            // Update existing record
+            const { error: updateError } = await supabaseAdmin
               .from("user_credits")
-              .upsert({
-                user_id: userId,
+              .update({
                 credits: newCredits,
                 updated_at: new Date().toISOString(),
-              });
+              })
+              .eq("user_id", userId);
+
+            if (updateError) {
+              console.error("❌ Error updating credits:", updateError);
+            }
 
             await supabaseAdmin.from("credit_transactions").insert({
               user_id: userId,
@@ -130,20 +135,47 @@ export const POST = Webhooks({
             // SUBSCRIPTION: Reset credits to plan amount
             const planCredits = getPlanCredits(plan);
 
-            const { error: upsertError } = await supabaseAdmin
+            // First try to update existing record
+            const { data: existingUser, error: selectError } = await supabaseAdmin
               .from("user_credits")
-              .upsert({
-                user_id: userId,
-                credits: planCredits,
-                plan: plan,
-                plan_started_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              });
+              .select("id")
+              .eq("user_id", userId)
+              .single();
 
-            if (upsertError) {
-              console.error("❌ Error upserting user_credits:", upsertError);
+            if (existingUser) {
+              // Update existing record
+              const { error: updateError } = await supabaseAdmin
+                .from("user_credits")
+                .update({
+                  credits: planCredits,
+                  plan: plan,
+                  plan_started_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("user_id", userId);
+
+              if (updateError) {
+                console.error("❌ Error updating user_credits:", updateError);
+              } else {
+                console.log(`✅ Updated user_credits: plan=${plan}, credits=${planCredits}`);
+              }
             } else {
-              console.log(`✅ Updated user_credits: plan=${plan}, credits=${planCredits}`);
+              // Insert new record
+              const { error: insertError } = await supabaseAdmin
+                .from("user_credits")
+                .insert({
+                  user_id: userId,
+                  credits: planCredits,
+                  plan: plan,
+                  plan_started_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                });
+
+              if (insertError) {
+                console.error("❌ Error inserting user_credits:", insertError);
+              } else {
+                console.log(`✅ Inserted user_credits: plan=${plan}, credits=${planCredits}`);
+              }
             }
 
             const { error: txError } = await supabaseAdmin.from("credit_transactions").insert({
