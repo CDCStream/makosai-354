@@ -20,6 +20,8 @@ function distributePoints(questions: Question[]): Question[] {
 // Generate worksheet using AI
 export async function generateWorksheet(input: WorksheetGeneratorInput, userId?: string): Promise<Worksheet> {
   try {
+    console.log('🚀 Calling API:', `${API_URL}/api/worksheets/generate`);
+
     const response = await fetch(`${API_URL}/api/worksheets/generate`, {
       method: 'POST',
       headers: {
@@ -28,12 +30,38 @@ export async function generateWorksheet(input: WorksheetGeneratorInput, userId?:
       body: JSON.stringify(input),
     });
 
+    // Get response text first
+    const responseText = await response.text();
+    console.log('📥 Response status:', response.status);
+    console.log('📥 Response text length:', responseText.length);
+
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to generate worksheet');
+      // Try to parse error JSON
+      let errorMessage = `Server error (${response.status})`;
+      if (responseText) {
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch {
+          errorMessage = responseText.substring(0, 200) || errorMessage;
+        }
+      }
+      throw new Error(errorMessage);
     }
 
-    const data = await response.json();
+    // Check if response is empty
+    if (!responseText || responseText.trim() === '') {
+      throw new Error('Server returned empty response. Please try again.');
+    }
+
+    // Parse JSON
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.error('JSON parse error:', e);
+      throw new Error('Invalid response from server. Please try again.');
+    }
 
     // Backend returns { success: true, worksheet: {...} }
     if (data.worksheet) {
@@ -58,10 +86,18 @@ export async function generateWorksheet(input: WorksheetGeneratorInput, userId?:
       return worksheetWithPoints;
     }
 
-    return data;
+    // If no worksheet in response
+    if (data.error) {
+      throw new Error(data.error);
+    }
+
+    throw new Error('Invalid response format from server');
   } catch (error) {
     console.error('API generation failed:', error);
-    // Re-throw the error so the UI can handle it
+    // Re-throw with better message
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      throw new Error('Cannot connect to server. Please check your internet connection.');
+    }
     throw error;
   }
 }

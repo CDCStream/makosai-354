@@ -9,7 +9,7 @@ import { WorksheetPreview } from '@/components/WorksheetPreview';
 import { Worksheet, WorksheetGeneratorInput } from '@/lib/types';
 import { generateWorksheet } from '@/lib/api';
 import { useAuth } from '@/lib/AuthContext';
-import { getUserCredits, UserCredits, PLANS } from '@/lib/credits';
+import { getUserCredits, UserCredits, PLANS, useCredits, getWorksheetCreditCost } from '@/lib/credits';
 import { ArrowLeft, RefreshCw, Sparkles, Save, Download, Printer, Eye, Target, CreditCard } from 'lucide-react';
 
 function GeneratorContent() {
@@ -61,6 +61,15 @@ function GeneratorContent() {
       return;
     }
 
+    // Calculate credit cost
+    const creditCost = getWorksheetCreditCost(input.question_count, input.grade_level);
+
+    // Check if user has enough credits
+    if (!userCredits || userCredits.credits < creditCost) {
+      setError(`Not enough credits. You need ${creditCost} credits but have ${userCredits?.credits || 0}. Please purchase more credits.`);
+      return;
+    }
+
     setIsGenerating(true);
     setGenerationStep(0);
     setError(null);
@@ -79,6 +88,20 @@ function GeneratorContent() {
       const result = await generateWorksheet(input, user.id);
       clearInterval(stepInterval);
       setGenerationStep(generationSteps.length - 1);
+
+      // Deduct credits after successful generation
+      const creditUsed = await useCredits(
+        user.id,
+        creditCost,
+        `Worksheet: ${input.topic} (${input.question_count} questions)`
+      );
+
+      if (creditUsed) {
+        // Refresh user credits display
+        const updatedCredits = await getUserCredits(user.id);
+        setUserCredits(updatedCredits);
+      }
+
       setWorksheet(result);
       setIsGenerating(false);
       setGenerationStep(0);
