@@ -504,13 +504,24 @@ function QuestionCard({ question, number, onPointsChange, editable = false }: Qu
         <LatexRenderer text={question.question} />
       </p>
 
-      {/* Question Image - Only show valid SVG */}
-      {question.image && question.image.trim().startsWith('<svg') && (
+      {/* Question Image - Support both SVG and URL */}
+      {question.image && (
         <div className="mb-5 flex justify-center">
-          <div
-            className="max-w-full h-auto rounded-xl shadow-md max-h-48 overflow-hidden bg-white p-2"
-            dangerouslySetInnerHTML={{ __html: question.image }}
-          />
+          {question.image.trim().startsWith('<svg') ? (
+            <div
+              className="max-w-full h-auto rounded-xl shadow-md max-h-48 overflow-hidden bg-white p-2"
+              dangerouslySetInnerHTML={{ __html: question.image }}
+            />
+          ) : question.image.trim().startsWith('http') ? (
+            <img
+              src={question.image}
+              alt="Question illustration"
+              className="max-w-full h-auto rounded-xl shadow-md max-h-48 object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          ) : null}
         </div>
       )}
 
