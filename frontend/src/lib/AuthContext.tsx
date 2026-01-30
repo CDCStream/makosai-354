@@ -65,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       provider: 'google',
       options: {
         redirectTo: `${baseUrl}/auth/callback`,
+        skipBrowserRedirect: false,
       },
     });
   };

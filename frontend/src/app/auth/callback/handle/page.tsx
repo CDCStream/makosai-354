@@ -1,34 +1,55 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Suspense } from 'react';
 
-function CallbackHandler() {
+export default function CallbackHandlePage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const handleCallback = async () => {
-      const code = searchParams.get('code');
-
-      if (!code) {
-        setError('No authorization code found');
-        setTimeout(() => router.push('/login'), 2000);
-        return;
-      }
-
       try {
-        // Exchange the code for a session - browser has the PKCE cookie
-        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        // Get the full URL including hash
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const queryParams = new URLSearchParams(window.location.search);
 
-        if (error) {
-          console.error('Auth error:', error);
-          setError(error.message);
+        // Check for error in URL
+        const urlError = hashParams.get('error') || queryParams.get('error');
+        if (urlError) {
+          const errorDescription = hashParams.get('error_description') || queryParams.get('error_description');
+          setError(errorDescription || urlError);
           setTimeout(() => router.push('/login'), 2000);
           return;
+        }
+
+        // Try to get session - detectSessionInUrl should handle the code exchange
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+        if (sessionError) {
+          console.error('Session error:', sessionError);
+          setError(sessionError.message);
+          setTimeout(() => router.push('/login'), 2000);
+          return;
+        }
+
+        if (session) {
+          // Already have a session, redirect to home
+          router.push('/');
+          return;
+        }
+
+        // If no session yet, try exchanging the code manually
+        const code = queryParams.get('code');
+        if (code) {
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) {
+            console.error('Exchange error:', exchangeError);
+            setError(exchangeError.message);
+            setTimeout(() => router.push('/login'), 2000);
+            return;
+          }
         }
 
         // Success - redirect to home
@@ -41,7 +62,7 @@ function CallbackHandler() {
     };
 
     handleCallback();
-  }, [searchParams, router]);
+  }, [router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 to-cyan-50">
@@ -59,17 +80,5 @@ function CallbackHandler() {
         )}
       </div>
     </div>
-  );
-}
-
-export default function CallbackHandlePage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 to-cyan-50">
-        <div className="w-16 h-16 border-4 border-teal-500 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    }>
-      <CallbackHandler />
-    </Suspense>
   );
 }
