@@ -158,17 +158,30 @@ function WorksheetDetailContent() {
             <div className="card p-6">
               <h3 className="font-bold text-gray-800 mb-4">Export & Share</h3>
               <div className="space-y-3">
-                <button
-                  onClick={() => {
-                    if (worksheet) {
-                      exportToPdf(worksheet);
-                    }
-                  }}
-                  className="w-full btn-secondary flex items-center justify-center gap-2"
-                >
-                  <FileText className="w-4 h-4" />
-                  Export PDF
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => {
+                      if (worksheet) {
+                        exportToPdf(worksheet);
+                      }
+                    }}
+                    className="flex-1 btn-secondary flex items-center justify-center gap-2"
+                  >
+                    <FileText className="w-4 h-4" />
+                    Export PDF
+                  </button>
+                  <div className="relative group">
+                    <button className="p-2 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition-colors">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10" strokeWidth="2"/>
+                        <path strokeWidth="2" d="M12 16v-4M12 8h.01"/>
+                      </svg>
+                    </button>
+                    <div className="absolute bottom-full right-0 mb-2 w-52 p-3 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                      Click &quot;Print&quot;, then select &quot;Save as PDF&quot; to download your worksheet
+                    </div>
+                  </div>
+                </div>
                 <button
                   onClick={() => exportToHtml(worksheet)}
                   className="w-full btn-secondary flex items-center justify-center gap-2"

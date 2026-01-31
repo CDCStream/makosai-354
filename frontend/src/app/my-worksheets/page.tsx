@@ -350,7 +350,18 @@ export default function MyWorksheetsPage() {
                           Questions + Answers
                         </button>
                         <div className="border-t border-gray-100 my-1"></div>
-                        <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase">Export PDF</div>
+                        <div className="px-3 py-1.5 text-xs font-semibold text-gray-400 uppercase flex items-center gap-1">
+                          Export PDF
+                          <span className="relative group">
+                            <svg className="w-3.5 h-3.5 text-gray-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <circle cx="12" cy="12" r="10" strokeWidth="2"/>
+                              <path strokeWidth="2" d="M12 16v-4M12 8h.01"/>
+                            </svg>
+                            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                              Click &quot;Print&quot;, then select &quot;Save as PDF&quot; to download
+                            </span>
+                          </span>
+                        </div>
                         <button
                           onClick={() => handleExportPdf(ws, 'questions')}
                           className="flex items-center gap-2 px-4 py-1.5 text-gray-700 hover:bg-gray-50 w-full text-left text-sm"
