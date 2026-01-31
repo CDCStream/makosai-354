@@ -96,7 +96,13 @@ function stripLatex(text: string): string {
 }
 
 export async function exportToPdf(worksheet: Worksheet, content: 'questions' | 'answer_key' | 'both' = 'both'): Promise<void> {
-  console.log('🚀 PDF Export started - using browser print');
+  console.log('🚀 PDF Export started - using html2canvas');
+
+  // Dynamic imports
+  const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+    import('html2canvas'),
+    import('jspdf')
+  ]);
 
   const title = content === 'questions'
     ? worksheet.title
@@ -104,34 +110,95 @@ export async function exportToPdf(worksheet: Worksheet, content: 'questions' | '
     ? `${worksheet.title} - Answer Key`
     : worksheet.title;
 
-  // Generate print-friendly HTML
-  const printHtml = generatePrintReadyHtml(worksheet, content, title);
+  // Create hidden container
+  const container = document.createElement('div');
+  container.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 794px; background: white;';
+  document.body.appendChild(container);
 
-  // Open in new window
-  const printWindow = window.open('', '_blank', 'width=800,height=600');
-  if (!printWindow) {
-    showDOMModal('Pop-up engelleyici aktif. Lütfen pop-up\'lara izin verin ve tekrar deneyin.', 'warning');
+  // Generate HTML content
+  const htmlContent = generatePrintReadyHtml(worksheet, content, title);
+
+  // Create iframe for isolated rendering
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'width: 794px; height: auto; border: none; position: absolute; left: -9999px;';
+  document.body.appendChild(iframe);
+
+  const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+  if (!iframeDoc) {
+    document.body.removeChild(iframe);
+    showDOMModal('PDF oluşturulamadı. Lütfen tekrar deneyin.', 'error');
     return;
   }
 
-  printWindow.document.write(printHtml);
-  printWindow.document.close();
+  iframeDoc.open();
+  iframeDoc.write(htmlContent);
+  iframeDoc.close();
 
-  // Wait for content to load then print
-  printWindow.onload = () => {
-    setTimeout(() => {
-      printWindow.focus();
-      printWindow.print();
-    }, 500);
-  };
+  // Wait for fonts and images to load
+  await new Promise(resolve => setTimeout(resolve, 2000));
 
-  // Fallback
-  setTimeout(() => {
-    if (printWindow && !printWindow.closed) {
-      printWindow.focus();
-      printWindow.print();
+  try {
+    // Get the body content height
+    const body = iframeDoc.body;
+    const totalHeight = body.scrollHeight;
+
+    // A4 dimensions at 96 DPI
+    const pageWidth = 794;
+    const pageHeight = 1123;
+    const margin = 40;
+    const contentHeight = pageHeight - (margin * 2);
+
+    // Create PDF
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'px',
+      format: 'a4',
+      hotfixes: ['px_scaling']
+    });
+
+    let yOffset = 0;
+    let pageNum = 0;
+
+    while (yOffset < totalHeight) {
+      if (pageNum > 0) {
+        pdf.addPage();
+      }
+
+      // Capture current section
+      const canvas = await html2canvas(body, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        width: pageWidth,
+        height: Math.min(pageHeight, totalHeight - yOffset),
+        y: yOffset,
+        windowWidth: pageWidth,
+        logging: false
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * pageWidth) / canvas.width;
+
+      pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
+
+      yOffset += pageHeight;
+      pageNum++;
     }
-  }, 1500);
+
+    // Download
+    const fileName = `${worksheet.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_')}.pdf`;
+    pdf.save(fileName);
+
+  } catch (error) {
+    console.error('PDF generation error:', error);
+    showDOMModal('PDF oluşturulurken hata oluştu. Lütfen tekrar deneyin.', 'error');
+  } finally {
+    // Cleanup
+    document.body.removeChild(iframe);
+    document.body.removeChild(container);
+  }
 }
 
 // Generate print-ready HTML with proper page break CSS
@@ -355,6 +422,7 @@ function generatePrintReadyHtml(worksheet: Worksheet, content: 'questions' | 'an
           <span class="question-pts">${getQuestionPoints(index)} pts</span>
         </div>
         <p class="question-text">${renderLatexToHtml(q.question)}</p>
+        ${q.image ? renderPrintImage(q.image) : ''}
         ${renderPrintOptions(q)}
       </div>
     `).join('')}
@@ -401,6 +469,22 @@ function renderPrintOptions(q: { type: string; options?: string[] }): string {
   if (q.type === 'essay') {
     return '<div class="essay-box"></div>';
   }
+  return '';
+}
+
+function renderPrintImage(image: string): string {
+  if (!image) return '';
+
+  // Check if it's an SVG
+  if (image.trim().startsWith('<svg')) {
+    return `<div style="text-align: center; margin: 15px 0;">${image}</div>`;
+  }
+
+  // Check if it's a URL (Unsplash image)
+  if (image.trim().startsWith('http')) {
+    return `<div style="text-align: center; margin: 15px 0;"><img src="${image}" alt="Question illustration" style="max-width: 250px; max-height: 180px; border-radius: 8px;" /></div>`;
+  }
+
   return '';
 }
 
