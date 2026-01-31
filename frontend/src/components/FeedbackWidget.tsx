@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { MessageSquarePlus, X, Send, CheckCircle } from 'lucide-react';
-import { createClient } from '@/lib/supabase';
+import { getSupabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/AuthContext';
 
 export function FeedbackWidget() {
@@ -34,7 +34,7 @@ export function FeedbackWidget() {
     setIsSubmitting(true);
 
     try {
-      const supabase = createClient();
+      const supabase = getSupabase();
 
       const { error } = await supabase.from('feedback').insert({
         user_id: user?.id || null,
