@@ -58,6 +58,12 @@ export function Header({ showAuth = true, transparent = false }: HeaderProps) {
             >
               Pricing
             </Link>
+            <Link
+              href="/blog"
+              className="px-4 py-2 text-gray-700 hover:text-teal-600 hover:bg-teal-50 font-semibold rounded-xl transition-all"
+            >
+              Blog
+            </Link>
           </nav>
 
           {/* Right Side: Auth */}
@@ -193,6 +199,13 @@ export function Header({ showAuth = true, transparent = false }: HeaderProps) {
               onClick={() => setMobileMenuOpen(false)}
             >
               Pricing
+            </Link>
+            <Link
+              href="/blog"
+              className="block px-4 py-3 text-gray-700 hover:bg-teal-50 hover:text-teal-600 font-semibold rounded-xl transition-colors"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Blog
             </Link>
 
             {showAuth && !loading && (
