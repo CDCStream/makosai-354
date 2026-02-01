@@ -1,8 +1,18 @@
 import { MetadataRoute } from 'next';
+import { getAllBlogPosts } from '@/lib/blog-data';
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = 'https://makos.ai';
   const currentDate = new Date().toISOString();
+
+  // Get all blog posts
+  const blogPosts = getAllBlogPosts();
+  const blogUrls = blogPosts.map(post => ({
+    url: `${baseUrl}/blog/${post.slug}`,
+    lastModified: post.date,
+    changeFrequency: 'monthly' as const,
+    priority: 0.7,
+  }));
 
   return [
     {
@@ -23,6 +33,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'weekly',
       priority: 0.8,
     },
+    {
+      url: `${baseUrl}/blog`,
+      lastModified: currentDate,
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    ...blogUrls,
     {
       url: `${baseUrl}/login`,
       lastModified: currentDate,
